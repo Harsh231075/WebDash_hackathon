@@ -1,10 +1,26 @@
-import React, { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import './index.css';
+import App from './App';
+import Signup from './auth/SignUp';
+import Login from './auth/Login';
+import Landing from './Home/Landing';
+import ProtectedRoute from './components/ProtectedRoute'; // Import the ProtectedRoute
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+const root = ReactDOM.createRoot(document.getElementById('root'));
+
+root.render(
+  <Router>
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/home" element={<Landing />} />
+      {/* Protected Routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/*" element={<App />} /> {/* All routes under '/' will be protected */}
+      </Route>
+    </Routes>
+  </Router>
+);
