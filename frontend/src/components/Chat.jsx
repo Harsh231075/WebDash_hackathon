@@ -1,8 +1,9 @@
 // In your ChatComponent.jsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { jwtDecode } from 'jwt-decode'; // Import the jwt-decode library
+import { jwtDecode } from 'jwt-decode';
 
 export default function Chat() {
   const { userId: receiverId } = useParams();
@@ -14,31 +15,44 @@ export default function Chat() {
   const token = localStorage.getItem('token');
   const socket = useRef(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUserName, setCurrentUserName] = useState('');
 
   useEffect(() => {
-    setBasicInfo(location.state?.basicInfo || null);
-
     if (token) {
       try {
         const decodedToken = jwtDecode(token);
-        // Assuming your user ID is stored in a claim called 'userId' or 'id' in the token
         setCurrentUserId(decodedToken.userId || decodedToken.id);
+        setCurrentUserName(decodedToken.name || decodedToken.username || 'You');
       } catch (error) {
         console.error('Error decoding token:', error);
-        // Handle invalid token (e.g., clear localStorage, redirect to login)
       }
     }
+  }, [token]);
 
+  useEffect(() => {
+    setBasicInfo(location.state?.basicInfo || null);
     fetchChatHistory();
-    console.log("call ho")
+
     socket.current = io(import.meta.env.VITE_API_URL);
 
+    if (currentUserId) {
+      socket.current.emit('join_chat', currentUserId);
+    }
+    if (receiverId) {
+      socket.current.emit('join_chat', receiverId);
+    }
+
     socket.current.on('receive_message', (newMessage) => {
-      setMessages(prevMessages => [...prevMessages, {
-        sender: newMessage.senderId === currentUserId ? 'You' : basicInfo?.name || `User ${receiverId}`,
-        text: newMessage.content,
-        _id: newMessage._id
-      }]);
+      if (newMessage.senderId !== currentUserId) {
+        setMessages(prevMessages => [...prevMessages, {
+          sender: newMessage.senderName,
+          text: newMessage.content,
+          _id: newMessage._id,
+          isSelf: false
+        }]);
+      } else {
+        console.log("Ignoring own broadcasted message:", newMessage);
+      }
     });
 
     return () => {
@@ -46,16 +60,21 @@ export default function Chat() {
         socket.current.disconnect();
       }
     };
-  }, [location.state, receiverId, basicInfo?.name, token]); // Added token as a dependency
+  }, [location.state, receiverId, basicInfo?.name, token, currentUserId, currentUserName]);
 
   const handleSendMessage = async () => {
     if (newMessage.trim() && currentUserId) {
-      socket.current.emit('send_message', {
+      const messageData = {
         receiverId: receiverId,
         content: newMessage,
         senderId: currentUserId,
-        senderName: basicInfo?.name // You might want to fetch your own name if not readily available
-      });
+        senderName: currentUserName
+      };
+
+      setMessages(prevMessages => [...prevMessages, { sender: 'You', text: newMessage, _id: Date.now(), isSelf: true }]);
+      setNewMessage('');
+
+      socket.current.emit('send_message', messageData);
 
       try {
         const response = await fetch(`${apiUrl}/api/chat/store-message`, {
@@ -64,49 +83,57 @@ export default function Chat() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ content: newMessage, receiver: receiverId }), // Include receiver for backend
+          body: JSON.stringify({ content: newMessage, receiver: receiverId }),
         });
 
         if (response.ok) {
           const sentMessage = await response.json();
-          setMessages(prevMessages => [...prevMessages, { sender: 'You', text: newMessage, _id: sentMessage._id }]);
-          setNewMessage('');
+          setMessages(prevMessages =>
+            prevMessages.map(msg =>
+              msg._id === Date.now() ? { ...msg, _id: sentMessage._id } : msg
+            )
+          );
         } else {
           console.error('Failed to send message:', response.status);
+          setMessages(prevMessages => prevMessages.filter(msg => !msg.isSelf || msg._id === Date.now()));
         }
       } catch (error) {
         console.error('Error sending message:', error);
+        setMessages(prevMessages => prevMessages.filter(msg => !msg.isSelf || msg._id === Date.now()));
       }
     }
   };
 
   const fetchChatHistory = async () => {
-    // if (token && currentUserId) {
-    console.log("call history fatch")
-    try {
-      const response = await fetch(`${apiUrl}/api/chat/history/${receiverId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    if (token && currentUserId) {
+      try {
+        const response = await fetch(`${apiUrl}/api/chat/history/${receiverId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-      if (response.ok) {
-        const history = await response.json();
-        console.log(history);
-        const formattedHistory = history.map(msg => ({
-          sender: msg.sender === currentUserId ? 'You' : basicInfo?.name || `User ${receiverId}`,
-          text: msg.content,
-          _id: msg._id,
-        }));
-        setMessages(formattedHistory);
-      } else {
-        console.error('Failed to fetch chat history:', response.status);
+        if (response.ok) {
+          const history = await response.json();
+          const formattedHistory = history.map(msg => ({
+            sender: msg.sender === currentUserId ? currentUserName : (basicInfo?.name || `User ${receiverId}`),
+            text: msg.content,
+            _id: msg._id,
+            isSelf: msg.sender === currentUserId
+          }));
+          setMessages(formattedHistory);
+        } else {
+          console.error('Failed to fetch chat history:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching chat history:', error);
       }
-    } catch (error) {
-      console.error('Error fetching chat history:', error);
     }
-    // }
   };
+  console.log('Messages:', messages);
+  console.log('Current User ID:', currentUserId);
+  console.log('Receiver ID:', receiverId);
+  console.log('Basic Info:', basicInfo);
 
   return (
     <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-between">
@@ -124,8 +151,11 @@ export default function Chat() {
         {/* Message Area */}
         <div className="p-6 bg-white overflow-y-auto h-96">
           {messages.map((msg, index) => (
-            <div key={msg._id || index} className={`mb-3 ${msg.sender === 'You' ? 'text-right' : 'text-left'}`}>
-              <div className={`inline-block rounded-lg py-2 px-3 ${msg.sender === 'You' ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-800'}`}>
+            <div key={msg._id || index} className={`mb-3 ${msg.isSelf ? 'text-right' : 'text-left'}`}>
+              <div
+                className={`inline-block rounded-lg py-2 px-3 ${msg.isSelf ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-800'
+                  }`}
+              >
                 {msg.text}
               </div>
             </div>

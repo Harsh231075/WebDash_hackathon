@@ -23,25 +23,31 @@ export const registerUser = async (req, res) => {
 
     const user = await User.create({ name, email, password: hashPassword, role });
 
-    user.save();
-
     // ✅ Create empty Profile doc after user registration
-    const newuser = await Profile.create({
+    await Profile.create({
       user: user._id,
       hero: {
         name: name,
+        role: '',
+        quote: '',
+        avatar: '',
+        coverImage: '',
+        location: ''
       },
       basic: {
+        avatar: '',
         name: name,
         email: email,
+        phone: '',
+        location: '',
+        bio: ''
       },
-      education: {},
+      education: { university: '', },
       professional: {},
       achievements: [],
       certificates: [],
       photos: []
     });
-    newuser.save();
 
     res.status(201).json({
       message: "User registered successfully",

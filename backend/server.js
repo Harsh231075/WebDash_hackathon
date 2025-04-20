@@ -7,7 +7,6 @@ const { v2 } = cloudinary;
 import fileupload from 'express-fileupload'
 import { Server } from 'socket.io'; // Import Socket.IO Server
 import Conversation from './models/Conversation.js'; // Import your Conversation model
-import User from './models/User.js'; // Import your User model (if needed for fetching names)
 
 import authRoutes from "./routes/authRoutes.js";
 import profileRote from './routes/profileRoutes.js'
@@ -64,6 +63,11 @@ io.on('connection', (socket) => {
     console.log(`User disconnected: ${socket.id}`);
   });
 
+  socket.on('join_chat', (userId) => {
+    socket.join(userId); // User joins their own ID as a room
+    console.log(`User ${socket.id} joined chat ${userId}`);
+  });
+
   socket.on('send_message', async (data) => {
     console.log('Received message via Socket:', data);
     try {
@@ -78,28 +82,23 @@ io.on('connection', (socket) => {
       conversation.updatedAt = Date.now();
       await conversation.save();
 
-      // Emit the message to the specific receiver
-      io.to(receiverId).emit('receive_message', {
-        _id: conversation.messages[conversation.messages.length - 1]._id, // Get the ID of the newly added message
+      // Emit the message to both sender and receiver (using their IDs as rooms)
+      io.to(senderId).emit('receive_message', {
+        _id: conversation.messages[conversation.messages.length - 1]._id,
         senderId: senderId,
         content: content,
         senderName: senderName
       });
-      // Optionally, emit back to the sender
-      socket.emit('receive_message', {
+      io.to(receiverId).emit('receive_message', {
         _id: conversation.messages[conversation.messages.length - 1]._id,
         senderId: senderId,
         content: content,
-        senderName: "You"
+        senderName: senderName
       });
+
     } catch (error) {
       console.error('Error handling sent message:', error);
     }
-  });
-
-  socket.on('join_chat', (chatId) => {
-    socket.join(chatId);
-    console.log(`User ${socket.id} joined chat ${chatId}`);
   });
 });
 

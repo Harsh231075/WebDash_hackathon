@@ -23,6 +23,7 @@ export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     const sectionName = req.body.section;
+    console.log('name = ', sectionName);
     const fieldPath = req.body.keyPath; // e.g., 'hero.avatar' or 'basic.avatar'
     console.log(fieldPath);
     const { section, keyPath, ...restData } = req.body;
@@ -78,22 +79,19 @@ export const updateProfile = async (req, res) => {
       if (sectionName === "certificates") {
         const file = gallery
         profile[sectionName].push({ file, ...restData });
-
-      } //else if (section === "Hero") {
-      //   const coverImage = gallery;
-      //   console.log("check = ", avatar)
-      //   profile[sectionName].push({ coverImage, ...restData });
-      // }
+      } else if (sectionName === "achievements") {
+        console.log("achievements");
+        profile[sectionName].push({ ...restData });
+      }
     } else {
       if (sectionName === "hero") {
         console.log("check-hero = ", gallery);
         restData.coverImage = gallery;
         profile[sectionName] = { ...profile[sectionName], ...restData, };
-      } else if (sectionName === "baisc") {
-        console.log("check-baisc = ", gallery);
-        restData.avatar = gallery;
-        profile[sectionName] = { ...profile[sectionName], ...restData, };
       }
+      console.log("check-baisc last");
+      restData.avatar = gallery;
+      profile[sectionName] = { ...profile[sectionName], ...restData, };
     }
 
     const saved = await profile.save();
