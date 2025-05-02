@@ -35,12 +35,12 @@ const DirectoryPage = () => {
   // Filter alumni based on search criteria
   const filteredAlumni = alumni.filter(person => {
     return (
-      (!filters.company || person.company.toLowerCase().includes(filters.company.toLowerCase())) &&
+      (!filters.company || person.company?.toLowerCase().includes(filters.company?.toLowerCase())) &&
       (!filters.graduationYear || person.graduation === filters.graduationYear) &&
       (!filters.location || person.location.toLowerCase().includes(filters.location.toLowerCase()))
     );
   });
-
+// console.log(alumni);
   return (
     <div className="space-y-8">
       {/* Enhanced Filters Section */}
@@ -109,7 +109,7 @@ const DirectoryPage = () => {
                 <div className="flex flex-col items-center text-center">
                   <div className="relative mb-4">
                     <img
-                      src={person.image || 'https://via.placeholder.com/150'}
+                      src={person.image || ''}
                       alt={person.name}
                       className="w-24 h-24 rounded-full object-cover ring-4 ring-gray-50 group-hover:ring-blue-50"
                     />

@@ -2,22 +2,25 @@ import Profile from '../models/Profile.js'
 import cloudinary from 'cloudinary';
 const { v2 } = cloudinary;
 import mongoose from "mongoose";
+import Post from '../models/Post.js'
 
 export const getMyProfile = async (req, res) => {
   try {
     const profile = await Profile.findOne({ user: req.user.id });
-
+    // console.log(profile);
     if (!profile) {
       return res.status(404).json({ message: "Profile not found" });
     }
 
-    res.status(200).json(profile);
+    const posts = await Post.find({ userId: req.user.id });
+    const postCount = posts.length;
+
+    res.status(200).json({ profile, postCount });
   } catch (err) {
     console.error("Error fetching profile:", err);
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 export const updateProfile = async (req, res) => {
   try {
@@ -103,19 +106,18 @@ export const updateProfile = async (req, res) => {
   }
 };
 
-
 export const getAllUserBasicDetails = async (req, res) => {
   try {
     const profiles = await Profile.find({});
-    console.log(profiles.user)
+    // console.log("hey ",profiles)
     const formattedUsers = profiles.map(profile => ({
       id: profile.user,
       name: profile.hero?.name || 'No Name',
       graduation: profile.education?.year || 'N/A',
       major: profile.education?.stream || 'N/A',
-      company: 'N/A', // Not available in doc
+      company: profile.professional?.company, // Not available in doc
       location: profile.hero?.location || 'N/A',
-      image: profile.hero?.avatar || 'https://i.pravatar.cc/300' // Default fallback
+      image: profile.basic.avatar || '' // Default fallback
     }));
 
     res.status(200).json({
@@ -173,6 +175,55 @@ export const deletePhoto = async (req, res) => {
   } catch (error) {
     console.error("Error deleting photo:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const  followUnfollowUser= async (req, res) => {
+  try {
+    const userIdToFollowUnfollow = req.params.userId;
+    const currentUserId = req.user.id; // Assuming req.user is populated by your auth middleware
+console.log("id =>",userIdToFollowUnfollow);
+    // Prevent a user from following/unfollowing themselves
+    if (userIdToFollowUnfollow === currentUserId) {
+      return res.status(400).json({ message: 'You cannot follow/unfollow yourself.' });
+    }
+
+    // Find the profile of the user to follow/unfollow
+    const profileToModify = await Profile.findOne({ user: userIdToFollowUnfollow });
+    if (!profileToModify) {
+      return res.status(404).json({ message: 'User profile not found.' });
+    }
+
+    // Find the profile of the current user
+    const currentUserProfile = await Profile.findOne({ user: currentUserId });
+    if (!currentUserProfile) {
+      return res.status(404).json({ message: 'Your profile not found.' });
+    }
+
+    const isFollowing = currentUserProfile.following.includes(userIdToFollowUnfollow);
+
+    if (isFollowing) {
+      // Unfollow user
+      currentUserProfile.following = currentUserProfile.following.filter(
+        (id) => id.toString() !== userIdToFollowUnfollow
+      );
+      profileToModify.followers = profileToModify.followers.filter(
+        (id) => id.toString() !== currentUserId
+      );
+      await currentUserProfile.save();
+      await profileToModify.save();
+      return res.status(200).json({ message: 'User unfollowed successfully.' });
+    } else {
+      // Follow user
+      currentUserProfile.following.push(userIdToFollowUnfollow);
+      profileToModify.followers.push(currentUserId);
+      await currentUserProfile.save();
+      await profileToModify.save();
+      return res.status(200).json({ message: 'User followed successfully.' });
+    }
+  } catch (error) {
+    console.error('Error following/unfollowing user:', error);
+    res.status(500).json({ message: 'Server error while following/unfollowing user.' });
   }
 };
 

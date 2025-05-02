@@ -217,3 +217,39 @@ export const likePost = async (req, res) => {
     });
   }
 };
+
+export const getLatestUserPosts = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Step 1: Find the latest 3 posts of the user
+    const posts = await Post.find({ userId }).sort({ createdAt: -1 }).limit(3);
+
+    // Step 2: Find user's profile for name and avatar
+    const profile = await Profile.findOne({ user: userId });
+
+    if (!profile || !profile.basic) {
+      return res.status(404).json({ success: false, message: "Profile not found" });
+    }
+
+    const formattedPosts = posts.map(post => ({
+      author: profile.basic.name,
+      avatar: profile.basic.avatar,
+      content: post.description,
+      time: moment(post.createdAt).fromNow(),
+      // you can also include original postId if needed
+      postId: post._id,
+    }));
+
+    res.status(200).json({
+      success: true,
+      posts: formattedPosts
+    });
+  } catch (error) {
+    console.error("Error fetching latest posts:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error"
+    });
+  }
+};

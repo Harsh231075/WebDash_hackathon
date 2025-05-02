@@ -56,6 +56,18 @@ const profileSchema = new mongoose.Schema({
       url: String,
       caption: String
     }
+  ],
+  followers: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }
+  ],
+  following: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }
   ]
 }, { timestamps: true });
 

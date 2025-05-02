@@ -6,11 +6,14 @@ import App from './App';
 import Signup from './auth/SignUp';
 import Login from './auth/Login';
 import Landing from './Home/Landing';
+import { Provider } from 'react-redux'
+import store  from './Redux/store.js'
 import ProtectedRoute from './components/ProtectedRoute'; // Import the ProtectedRoute
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(
+  <Provider store={store}>
   <Router>
     <Routes>
       {/* Public Routes */}
@@ -23,4 +26,5 @@ root.render(
       </Route>
     </Routes>
   </Router>
+  </Provider>
 );

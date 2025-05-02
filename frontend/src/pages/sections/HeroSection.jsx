@@ -13,7 +13,7 @@ const HeroSection = ({ data, coverPhoto }) => {
     avatar: data.avatar,
     coverImage: coverPhoto.coverImage
   });
-
+console.log(coverPhoto?.coverImage);
   const [coverFile, setCoverFile] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
 
@@ -65,7 +65,7 @@ const HeroSection = ({ data, coverPhoto }) => {
       <div className="relative h-[300px] bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="absolute inset-0">
           <img
-            src={formData.coverImage || 'https://i.pravatar.cc/1200'}
+            src={formData.coverImage || ''}
             alt="cover"
             className="w-full h-full object-cover mix-blend-overlay opacity-20"
           />

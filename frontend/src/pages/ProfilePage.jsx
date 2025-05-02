@@ -8,6 +8,8 @@ import ProfessionalDetails from './sections/ProfessionalDetails';
 import Achievements from './sections/Achievements';
 import Certificates from './sections/Certificates';
 import PhotoGallery from './sections/PhotoGallery';
+import {useDispatch} from 'react-redux'
+import { setSelectedUser } from '../Redux/selectedUserSlice';
 
 const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -16,7 +18,8 @@ const ProfilePage = () => {
   const [error, setError] = useState(null);
   const apiUrl = import.meta.env.VITE_API_URL;
   const token = localStorage.getItem('token');
-
+//  const selectedUser = useSelector((store)=>store.selectedUser.selectedUser);
+ const dispatch=useDispatch();
   useEffect(() => {
     const fetchProfileData = async () => {
       setLoading(true);
@@ -28,7 +31,8 @@ const ProfilePage = () => {
           },
         });
         console.log(response);
-        setProfileData(response.data);
+        setProfileData(response.data.profile);
+        dispatch(setSelectedUser(response.data));
       } catch (err) {
         console.error('Error fetching profile data:', err);
         setError('Failed to load profile data. Please try again later.');

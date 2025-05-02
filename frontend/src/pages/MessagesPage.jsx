@@ -1,29 +1,33 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const MessagesPage = () => {
-  const messages = [
-    {
-      sender: 'Michael Chen',
-      avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg',
-      message: 'Thanks for the interview tips!',
-      time: '2 hours ago',
-      unread: true
-    },
-    {
-      sender: 'Emily Rodriguez',
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-      message: 'Looking forward to the tech panel next month',
-      time: '1 day ago',
-      unread: false
-    },
-    {
-      sender: 'David Kim',
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg',
-      message: 'Great meeting you at the networking event',
-      time: '2 days ago',
-      unread: false
-    }
-  ];
+  const [messages, setMessages] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/message/conversations`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        console.log("call",res.data);
+        setMessages(res.data);
+      } catch (error) {
+        console.error('Failed to fetch messages', error);
+      }
+    };
+
+    fetchMessages();
+  }, []);
+  const handleClick = (userId) => {
+    navigate(`/chat/${userId}`);
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm">
@@ -34,8 +38,8 @@ const MessagesPage = () => {
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`p-6 hover:bg-gray-50 cursor-pointer ${message.unread ? 'bg-blue-50' : ''
-              }`}
+            onClick={() => handleClick(message._id)}
+            className={`p-6 hover:bg-gray-50 cursor-pointer ${message.unread ? 'bg-blue-50' : ''}`}
           >
             <div className="flex items-center space-x-4">
               <img

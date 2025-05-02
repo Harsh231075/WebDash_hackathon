@@ -8,7 +8,9 @@ export default function ViewUser() {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isFollowing, setIsFollowing] = useState(false);
   const apiUrl = import.meta.env.VITE_API_URL;
+  const token = localStorage.getItem('token'); // Get token from local storage
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -22,6 +24,8 @@ export default function ViewUser() {
 
         const data = await response.json();
         setUserData(data);
+        // Optionally check if the current user is already following this user
+        // and update the isFollowing state accordingly. This would require another API call.
       } catch (err) {
         setError(err.message);
       } finally {
@@ -34,11 +38,36 @@ export default function ViewUser() {
 
   const handleMessageClick = () => {
     if (userData?.basic) {
-      // Navigate to the /chat route with the userId and the entire basic object as state
       navigate(`/chat/${userId}`, { state: { basicInfo: userData.basic } });
     } else {
-      // Fallback if basic info is not available
       navigate(`/chat/${userId}`);
+    }
+  };
+
+  const handleFollowClick = async () => {
+    if (!token) {
+      console.error('No token found. Cannot follow/unfollow.');
+      return;
+    }
+
+    try {
+      const method = isFollowing ? 'DELETE' : 'POST';
+      const response = await fetch(`${apiUrl}/api/profile/follow/${userId}`, {
+        method: method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to ${isFollowing ? 'unfollow' : 'follow'} user`);
+      }
+
+      setIsFollowing(!isFollowing); // Toggle the follow state
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -106,14 +135,25 @@ export default function ViewUser() {
             </div>
           </div>
 
-          {/* Message Button */}
-          <button
-            onClick={handleMessageClick}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center hover:bg-blue-700 transition"
-          >
-            <MessageSquare size={18} className="mr-2" />
-            Message
-          </button>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleMessageClick}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center hover:bg-blue-700 transition"
+            >
+              <MessageSquare size={18} className="mr-2" />
+              Message
+            </button>
+            <button
+              onClick={handleFollowClick}
+              className={`px-4 py-2 rounded-lg flex items-center transition ${
+                isFollowing ? 'bg-gray-400 text-white hover:bg-gray-500' : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              <MessageSquare size={18} className="mr-2" />
+              {isFollowing ? 'Unfollow' : 'Follow'}
+            </button>
+          </div>
         </div>
 
         {/* Main Content Area - Two Column Layout */}
